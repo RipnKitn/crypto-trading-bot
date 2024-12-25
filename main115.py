@@ -91,9 +91,9 @@ def webhook():
     print("Webhook received:", data)
     action = data.get("action")
 
-    if action in ["trade", "sell"]:  # Explicitly includes "sell"
+    if action == "trade":
         process_trade()
-        return f"{action.capitalize()} executed!", 200
+        return "Trade executed!", 200
     return "Unknown action", 400
 
 def process_trade():
