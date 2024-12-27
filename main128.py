@@ -91,15 +91,12 @@ def webhook():
     print("Webhook received:", data)
     action = data.get("action")
 
-    if action == "buy":
-        process_trade("buy")
-        return "Buy executed!", 200
-    elif action == "sell":
-        process_trade("sell")
-        return "Sell executed!", 200
+    if action == "trade":
+        process_trade()
+        return "Trade executed!", 200
     return "Unknown action", 400
 
-def process_trade(action):
+def process_trade():
     """Process buy or sell trades based on parameters.json."""
     try:
         params = load_parameters()
@@ -133,21 +130,34 @@ def process_trade(action):
             return
 
         # Calculate amounts
-        trade_amount = calculate_amount(action, params, wallet, price)
+        buy_amount = calculate_amount("buy", params, wallet, price)
+        sell_amount = calculate_amount("sell", params, wallet, price)
 
         # Execute trades
-        if action == "buy":
-            print(f"Placing buy order for {trade_amount} {coin}.")
+        if params["mode"] == "$":
+            print(f"Placing buy order for {buy_amount} {coin} for ${params['buy_$']}.")
             client.market_order_buy(
                 product_id=product_id,
-                base_size=str(trade_amount),
+                quote_size=params["buy_$"],
                 client_order_id=str(uuid.uuid4())
             )
-        elif action == "sell":
-            print(f"Placing sell order for {trade_amount} {coin}.")
+            print(f"Placing sell order for {sell_amount} {coin} for ${params['sell_$']}.")
             client.market_order_sell(
                 product_id=product_id,
-                base_size=str(trade_amount),
+                quote_size=params["sell_$"],
+                client_order_id=str(uuid.uuid4())
+            )
+        elif params["mode"] == "%":
+            print(f"Placing buy order for {buy_amount} {coin}.")
+            client.market_order_buy(
+                product_id=product_id,
+                base_size=str(buy_amount),
+                client_order_id=str(uuid.uuid4())
+            )
+            print(f"Placing sell order for {sell_amount} {coin}.")
+            client.market_order_sell(
+                product_id=product_id,
+                base_size=str(sell_amount),
                 client_order_id=str(uuid.uuid4())
             )
     except Exception as e:
@@ -163,4 +173,4 @@ def get_current_price(product_id):
         return None
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 80)))
+    app.run(host='0.0.0.0', port=80)
