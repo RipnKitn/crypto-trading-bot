@@ -49,7 +49,7 @@ def fetch_account_ids():
         accounts = client.get_accounts()
         account_map = {}
         for account in accounts['data']:
-            account_map[account['currency']['code']] = account['id']
+            account_map[account['currency']] = account['id']
         return account_map
     except Exception as e:
         print(f"Error fetching accounts: {e}")
@@ -58,15 +58,6 @@ def fetch_account_ids():
 def calculate_amount(action, params, wallet, price):
     """
     Calculate the buy/sell amount based on parameters and wallet balance.
-    
-    Args:
-        action (str): "buy" or "sell".
-        params (dict): Parameters from parameters.json.
-        wallet (dict): Wallet balances.
-        price (float): Current price of the coin.
-
-    Returns:
-        float: Amount to trade.
     """
     mode = params.get("mode", "$")
     percentage = params.get(f"{action}_%", 0)
@@ -118,13 +109,13 @@ def process_trade(action):
         # Fetch wallet balances dynamically based on UUIDs
         wallet = {}
         if coin in account_ids:
-            wallet["coin"] = client.get_account(account_ids[coin])["balance"]["amount"]
+            wallet["coin"] = float(client.get_account(account_ids[coin])["balance"]["amount"])
         else:
             print(f"Error: No account found for coin {coin}. Defaulting to 0 balance.")
             wallet["coin"] = 0
 
         if pair in account_ids:
-            wallet["pair"] = client.get_account(account_ids[pair])["balance"]["amount"]
+            wallet["pair"] = float(client.get_account(account_ids[pair])["balance"]["amount"])
         else:
             print(f"Error: No account found for pair {pair}. Defaulting to 0 balance.")
             wallet["pair"] = 0
@@ -144,14 +135,14 @@ def process_trade(action):
         # Execute trades
         if params["mode"] == "$":
             print(f"Placing buy order for {buy_amount} {coin} for ${params['buy_$']}.")
-            client.buy(price=params["buy_$"], currency_pair=product_id, amount=buy_amount)
+            # client.buy(price=params["buy_$"], currency_pair=product_id, amount=buy_amount)
             print(f"Placing sell order for {sell_amount} {coin} for ${params['sell_$']}.")
-            client.sell(price=params["sell_$"], currency_pair=product_id, amount=sell_amount)
+            # client.sell(price=params["sell_$"], currency_pair=product_id, amount=sell_amount)
         elif params["mode"] == "%":
             print(f"Placing buy order for {buy_amount} {coin}.")
-            client.buy(price=price, currency_pair=product_id, amount=buy_amount)
+            # client.buy(price=price, currency_pair=product_id, amount=buy_amount)
             print(f"Placing sell order for {sell_amount} {coin}.")
-            client.sell(price=price, currency_pair=product_id, amount=sell_amount)
+            # client.sell(price=price, currency_pair=product_id, amount=sell_amount)
     except Exception as e:
         print(f"Trade processing failed: {str(e)}")
 
