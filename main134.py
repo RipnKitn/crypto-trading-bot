@@ -96,15 +96,12 @@ def webhook():
     print("Webhook received:", data)
     action = data.get("action")
 
-    if action == "buy":
-        process_trade("buy")
-        return "Buy order executed!", 200
-    elif action == "sell":
-        process_trade("sell")
-        return "Sell order executed!", 200
+    if action == "trade":
+        process_trade()
+        return "Trade executed!", 200
     return "Unknown action", 400
 
-def process_trade(action):
+def process_trade():
     """Process buy or sell trades based on parameters.json."""
     try:
         params = load_parameters()

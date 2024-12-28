@@ -1,4 +1,4 @@
-from coinbase.wallet.client import Client
+from coinbase_advanced_trader.enhanced_rest_client import EnhancedRESTClient
 from dotenv import load_dotenv
 import json
 import os
@@ -12,7 +12,7 @@ api_key = os.getenv("API_KEY")
 api_secret = os.getenv("API_SECRET")
 
 # Initialize Coinbase Client
-client = Client(api_key, api_secret)
+client = EnhancedRESTClient(api_key=api_key, api_secret=api_secret)
 
 # Flask App Setup
 app = Flask(__name__)
@@ -48,8 +48,8 @@ def fetch_account_ids():
     try:
         accounts = client.get_accounts()
         account_map = {}
-        for account in accounts['data']:
-            account_map[account['currency']['code']] = account['id']
+        for account in accounts["accounts"]:
+            account_map[account["currency"]] = account["id"]
         return account_map
     except Exception as e:
         print(f"Error fetching accounts: {e}")
@@ -83,11 +83,6 @@ def calculate_amount(action, params, wallet, price):
     return 0
 
 # Flask Routes
-@app.route('/')
-def home():
-    """Root route to verify server is running."""
-    return 'Flask server is running!'
-
 @app.route('/webhook', methods=['POST'])
 def webhook():
     """Handle incoming webhooks."""
@@ -96,15 +91,12 @@ def webhook():
     print("Webhook received:", data)
     action = data.get("action")
 
-    if action == "buy":
-        process_trade("buy")
-        return "Buy order executed!", 200
-    elif action == "sell":
-        process_trade("sell")
-        return "Sell order executed!", 200
+    if action == "trade":
+        process_trade()
+        return "Trade executed!", 200
     return "Unknown action", 400
 
-def process_trade(action):
+def process_trade():
     """Process buy or sell trades based on parameters.json."""
     try:
         params = load_parameters()
@@ -118,13 +110,13 @@ def process_trade(action):
         # Fetch wallet balances dynamically based on UUIDs
         wallet = {}
         if coin in account_ids:
-            wallet["coin"] = client.get_account(account_ids[coin])["balance"]["amount"]
+            wallet["coin"] = client.get_account(account_ids[coin])["balance"]
         else:
             print(f"Error: No account found for coin {coin}. Defaulting to 0 balance.")
             wallet["coin"] = 0
 
         if pair in account_ids:
-            wallet["pair"] = client.get_account(account_ids[pair])["balance"]["amount"]
+            wallet["pair"] = client.get_account(account_ids[pair])["balance"]
         else:
             print(f"Error: No account found for pair {pair}. Defaulting to 0 balance.")
             wallet["pair"] = 0
@@ -144,14 +136,30 @@ def process_trade(action):
         # Execute trades
         if params["mode"] == "$":
             print(f"Placing buy order for {buy_amount} {coin} for ${params['buy_$']}.")
-            client.buy(price=params["buy_$"], currency_pair=product_id, amount=buy_amount)
+            client.market_order_buy(
+                product_id=product_id,
+                quote_size=params["buy_$"],
+                client_order_id=str(uuid.uuid4())
+            )
             print(f"Placing sell order for {sell_amount} {coin} for ${params['sell_$']}.")
-            client.sell(price=params["sell_$"], currency_pair=product_id, amount=sell_amount)
+            client.market_order_sell(
+                product_id=product_id,
+                quote_size=params["sell_$"],
+                client_order_id=str(uuid.uuid4())
+            )
         elif params["mode"] == "%":
             print(f"Placing buy order for {buy_amount} {coin}.")
-            client.buy(price=price, currency_pair=product_id, amount=buy_amount)
+            client.market_order_buy(
+                product_id=product_id,
+                base_size=str(buy_amount),
+                client_order_id=str(uuid.uuid4())
+            )
             print(f"Placing sell order for {sell_amount} {coin}.")
-            client.sell(price=price, currency_pair=product_id, amount=sell_amount)
+            client.market_order_sell(
+                product_id=product_id,
+                base_size=str(sell_amount),
+                client_order_id=str(uuid.uuid4())
+            )
     except Exception as e:
         print(f"Trade processing failed: {str(e)}")
 
